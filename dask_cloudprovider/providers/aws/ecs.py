@@ -675,6 +675,9 @@ class ECSCluster(SpecCluster):
         if self._worker_mem is None:
             self._worker_mem = self.config.get("worker_mem")
 
+        if self._worker_resources is None:
+            self._worker_resources = {}
+
         if self._n_workers is None:
             self._n_workers = self.config.get("n_workers")
 
