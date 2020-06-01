@@ -1045,45 +1045,46 @@ class ECSCluster(SpecCluster):
             resource_requirements.append(
                 {"type": "GPU", "value": str(self._worker_gpu)}
             )
-            response = await self._clients["ecs"].register_task_definition(
-                    family="{}-{}".format(self.cluster_name, "worker"),
-                    taskRoleArn=self._task_role_arn,
-                    executionRoleArn=self._execution_role_arn,
-                    networkMode="awsvpc",
-                    containerDefinitions=[
-                        {
-                            "name": "dask-worker",
-                            "image": self.image,
-                            "cpu": self._worker_cpu,
-                            "memory": self._worker_mem,
-                            "memoryReservation": self._worker_mem,
-                            "resourceRequirements": resource_requirements,
-                            "essential": True,
-                            "command": [
-                                "dask-cuda-worker" if self._worker_gpu else "dask-worker",
-                                "--nthreads",
-                                "{}".format(self._worker_nthreads),
-                                "--memory-limit",
-                                "{}MB".format(int(self._worker_mem)),
-                                "--death-timeout",
-                                "60",
+            async with self._client("ecs") as ecs:
+                response = await ecs.register_task_definition(
+                        family="{}-{}".format(self.cluster_name, "worker"),
+                        taskRoleArn=self._task_role_arn,
+                        executionRoleArn=self._execution_role_arn,
+                        networkMode="awsvpc",
+                        containerDefinitions=[
+                            {
+                                "name": "dask-worker",
+                                "image": self.image,
+                                "cpu": self._worker_cpu,
+                                "memory": self._worker_mem,
+                                "memoryReservation": self._worker_mem,
+                                "resourceRequirements": resource_requirements,
+                                "essential": True,
+                                "command": [
+                                    "dask-cuda-worker" if self._worker_gpu else "dask-worker",
+                                    "--nthreads",
+                                    "{}".format(self._worker_nthreads),
+                                    "--memory-limit",
+                                    "{}MB".format(int(self._worker_mem)),
+                                    "--death-timeout",
+                                    "60",
+                                    ],
+                                "logConfiguration": {
+                                    "logDriver": "awslogs",
+                                    "options": {
+                                        "awslogs-region": self._clients["ecs"].meta.region_name,
+                                        "awslogs-group": self.cloudwatch_logs_group,
+                                        "awslogs-stream-prefix": self._cloudwatch_logs_stream_prefix,
+                                        "awslogs-create-group": "true",
+                                        },
+                                    }
                                 ],
-                            "logConfiguration": {
-                                "logDriver": "awslogs",
-                                "options": {
-                                    "awslogs-region": self._clients["ecs"].meta.region_name,
-                                    "awslogs-group": self.cloudwatch_logs_group,
-                                    "awslogs-stream-prefix": self._cloudwatch_logs_stream_prefix,
-                                    "awslogs-create-group": "true",
-                                    },
-                                }
-                            ],
-                        volumes=[],
-                        requiresCompatibilities=["FARGATE"] if self._fargate_workers else [],
-                        cpu=str(self._worker_cpu),
-                        memory=str(self._worker_mem),
-                        tags=dict_to_aws(self.tags),
-                        )
+                            volumes=[],
+                            requiresCompatibilities=["FARGATE"] if self._fargate_workers else [],
+                            cpu=str(self._worker_cpu),
+                            memory=str(self._worker_mem),
+                            tags=dict_to_aws(self.tags),
+                            )
         weakref.finalize(self, self.sync, self._delete_worker_task_definition_arn)
         return response["taskDefinition"]["taskDefinitionArn"]
 
