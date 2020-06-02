@@ -1078,7 +1078,7 @@ class ECSCluster(SpecCluster):
                                         "awslogs-create-group": "true",
                                         },
                                     }
-                                ],
+                            }],
                             volumes=[],
                             requiresCompatibilities=["FARGATE"] if self._fargate_workers else [],
                             cpu=str(self._worker_cpu),
